@@ -5,7 +5,7 @@ This is a fork of the Open Watcom v2 project. It is more varied and wild than th
 This specific branch details
 ----------------------------
 
-master: This branch's changes that generally track upstream
+master: This branch's changes that are stable.
 
 moderate: A branch for moderate changes, usually from what is learned by the wild branch. This is often reset to master.
 
