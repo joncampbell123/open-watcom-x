@@ -6,7 +6,9 @@ This specific branch details
 ----------------------------
 
 master: This branch's changes that generally track upstream
+
 moderate: A branch for moderate changes, usually from what is learned by the wild branch. This is often reset to master.
+
 wild: A branch for wild changes that can greatly change functions, behaviors, and rearrange things. This is often reset to master.
 
 Source Tree Layout
