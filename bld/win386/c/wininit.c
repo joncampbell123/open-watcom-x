@@ -59,6 +59,16 @@
 #define READSIZE        (0x8000)
 #define FPU_AREA        0x40            // offset into stack for fpu
 
+extern BYTE WDPMI_Check386Version( void );
+#pragma aux WDPMI_Check386Version = \
+        _MOV_AX_W DPMI_0400 \
+        _INT_31         \
+        _AND_BL 0x01    \
+    __parm __caller []  \
+    __value         [__bl]\
+    __modify __exact [__ax __bx __cx __dx]
+
+
 struct  fpu_area {
     unsigned short      control_word;
     unsigned short      unused1;
@@ -115,14 +125,14 @@ extern BYTE     __isPC98;
 
 extern void     FAR __CallBack( void );
 
-static void     CodeRelocate( DWORD __far *reloc, WORD cnt );
-
-static char     outOfSelectors[] = "Out of selectors";
+static void     CodeRelocate( DWORD __far *reloc, WORD count );
 
 /*
  * dwordToStr - convert a DWORD to a string (base 10)
  */
-static char _FAR *dwordToStr( DWORD value )
+#ifdef DLL32
+#else
+static char *dwordToStr( DWORD value )
 {
     static char buff[16];
     int         i;
@@ -137,18 +147,26 @@ static char _FAR *dwordToStr( DWORD value )
     return( &buff[i] );
 
 } /* dwordToStr */
+#endif
 
 /*
  * Init32BitTask - load and initialize the 32-bit application
  */
 bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdline, int cmdshow )
 {
-    WORD                i,amount,bytes_read,j;
+    WORD                amount;
+    WORD                bytes_read;
+    WORD                j;
     WORD                sel;
     int                 handle;
     tiny_ret_t          rc;
-    DWORD               size,currsize,curroff,minmem,maxmem;
-    DWORD               relsize,exelen;
+    DWORD               size;
+    DWORD               currsize;
+    DWORD               curroff;
+    DWORD               minmem;
+    DWORD               maxmem;
+    DWORD               relsize;
+    DWORD               exelen;
     struct wstart_vars  __far *dataptr;
     DWORD               alias;
     DWORD               __far *relptr;
@@ -157,18 +175,17 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
     exe_data            exedat;
     char                file[128];
     DWORD               flags;
-    version_info        vi;
     DWORD               file_header_size;
     bool                tried_global_compact;
     DWORD               save_maxmem;
     dpmi_mem_block      adata;
+    bool                err;
 
     flags = GetWinFlags();
     /*
      * verify that we are running on a 32-bit DPMI
      */
-    DPMIGetVersion( &vi );
-    if( (vi.flags & VERSION_80386) == 0 ) {
+    if( !WDPMI_Check386Version() ) {
         MessageBox( NULL, "Not running on a 386 DPMI implementation",MsgTitle,
                         MB_OK | MB_ICONHAND | MB_TASKMODAL );
         return( false );
@@ -180,7 +197,11 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
     GetModuleFileName( thisInstance, file, 128 );
     rc = TinyFarOpen( file, TIO_READ );
     if( TINY_ERROR( rc ) ) {
-        return( Fini32BitTask( 2, (char _FAR *)"Error opening file", (char _FAR *)file ) );
+#ifdef DLL32
+        return( Fini32BitTask( 0 ) );
+#else
+        return( Fini32BitTask( 2, "Error opening file", file ) );
+#endif
     }
     handle = TINY_INFO( rc );
 
@@ -211,7 +232,11 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
     TinyFarRead( handle, &exe, sizeof( rex_exe ) );
 //    BreakPoint();
     if( !(exe.sig[0] == 'M' && exe.sig[1] == 'Q') ) {
-        return( Fini32BitTask( 1, (char _FAR *)"Invalid EXE" ) );
+#ifdef DLL32
+        return( Fini32BitTask( 0 ) );
+#else
+        return( Fini32BitTask( 1, "Invalid EXE" ) );
+#endif
     }
     file_header_size = (DWORD)exe.file_header * 16L;
     /*
@@ -220,7 +245,7 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
      * we extended the linker to have the .one field contain the
      * number of full 64K chunks of relocations, minus 1.
      */
-    file_header_size += (exe.one-1)*0x10000L*16L;
+    file_header_size += (exe.one - 1) * 0x10000L * 16L;
 
     /*
      * get exe data - data start and stack start
@@ -265,12 +290,15 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
      */
     tried_global_compact = false;
     save_maxmem = maxmem;
-    while( (i = _DPMI_Get32( &adata, maxmem )) != 0 ) {
+    while( _DPMI_Get32( &adata, maxmem ) ) {
         if( maxmem == minmem ) {
             if( tried_global_compact ) {
-                return( Fini32BitTask( 3,
-                  (char _FAR *)"Not enough memory for application\n(minimum ",
-                  dwordToStr( minmem ), (char _FAR *)" required)" ) );
+#ifdef DLL32
+                return( Fini32BitTask( 0 ) );
+#else
+                return( Fini32BitTask( 3, "Not enough memory for application\n(minimum ",
+                  dwordToStr( minmem ), " required)" ) );
+#endif
             }
             /*
              * GlobalCompact(-1) causes Windows to unfragment its
@@ -292,27 +320,34 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
     DataHandle = adata.handle;
     BaseAddr   = adata.linear + 0x10000ul;
 #if FLAT
-    i = InitFlatAddrSpace( BaseAddr, 0L );
+    err = InitFlatAddrSpace( BaseAddr, 0L );
 #else
-    i = InitFlatAddrSpace( BaseAddr, maxmem );
+    err = InitFlatAddrSpace( BaseAddr, maxmem );
 #endif
     BaseAddr = 0L;
-    if( i ) {
-        DPMIFreeMemoryBlock( DataHandle );
-        return( Fini32BitTask( 2, (char _FAR *)"Allocation error ", dwordToStr( i ) ) );
+    if( err ) {
+        _DPMI_Free32( DataHandle );
+#ifdef DLL32
+        return( Fini32BitTask( 0 ) );
+#else
+        return( Fini32BitTask( 1, "Allocation error" ) );
+#endif
     }
     SaveSP = BaseAddr + StackSize;
     CodeLoadAddr = SaveSP;
     MyDataSelector = DataSelector;
     GetDataSelectorInfo();
     CodeEntry.off = exe.initial_eip + CodeLoadAddr + sizeof( exe_data );
-
     /*
      * this builds a collection of LDT selectors that are ready for
      * allocation
      */
     if( InitSelectorCache() ) {
-        return( Fini32BitTask( 1, (char _FAR *)outOfSelectors ) );
+#ifdef DLL32
+        return( Fini32BitTask( 0 ) );
+#else
+        return( Fini32BitTask( 1, "Out of selectors" ) );
+#endif
     }
 
     /*
@@ -320,11 +355,12 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
      */
     currsize = size - file_header_size;
     TinySeek( handle, exelen + file_header_size, TIO_SEEK_SET );
-    i = _DPMI_GetAliases( CodeLoadAddr, &alias, 0 );
-    if( i ) {
-        return( Fini32BitTask( 3, (char _FAR *)"Error ",
-                dwordToStr( i ),
-                (char _FAR *)" getting alias for read" ) );
+    if( _DPMI_GetAliases( CodeLoadAddr, &alias, 0 ) ) {
+#ifdef DLL32
+        return( Fini32BitTask( 0 ) );
+#else
+        return( Fini32BitTask( 1, "Error getting alias for read" ) );
+#endif
     }
     dataptr = (struct wstart_vars __far *)alias;
     sel = ALIAS_SEL( &alias );
@@ -338,7 +374,11 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
         rc = TinyFarRead( handle, dataptr, amount );
         bytes_read = TINY_INFO( rc );
         if( bytes_read != amount ) {
-            return( Fini32BitTask( 1, (char _FAR *)"Read error" ) );
+#ifdef DLL32
+            return( Fini32BitTask( 0 ) );
+#else
+            return( Fini32BitTask( 1, "Read error" ) );
+#endif
         }
         currsize -= (DWORD)amount;
         curroff += (DWORD)amount;
@@ -354,11 +394,11 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
     relsize = sizeof( DWORD ) * (DWORD)exe.reloc_cnt;
     {
         DWORD   realsize;
-        WORD    kcnt;
+        WORD    kcount;
 
         realsize = file_header_size - (DWORD)exe.first_reloc;
-        kcnt = realsize / ( 0x10000L * sizeof( DWORD ) );
-        relsize += kcnt * ( 0x10000L * sizeof( DWORD ) );
+        kcount = realsize / ( 0x10000L * sizeof( DWORD ) );
+        relsize += kcount * ( 0x10000L * sizeof( DWORD ) );
     }
     if( relsize != 0 ) {
         TinySeek( handle, exelen + (DWORD)exe.first_reloc, TIO_SEEK_SET );
@@ -374,7 +414,11 @@ bool Init32BitTask( HINSTANCE thisInstance, HINSTANCE prevInstance, LPSTR cmdlin
             rc = TinyFarRead( handle, relptr, amount );
             bytes_read = TINY_INFO( rc );
             if( bytes_read != amount ) {
-                return( Fini32BitTask( 1, (char _FAR *)"Relocation read error" ) );
+#ifdef DLL32
+                return( Fini32BitTask( 0 ) );
+#else
+                return( Fini32BitTask( 1, "Relocation read error" ) );
+#endif
             }
             CodeRelocate( relptr, amount / sizeof( DWORD ) );
             relsize -= (DWORD)amount;
@@ -494,12 +538,12 @@ extern void RelocateWORD( short, long, short );
 /*
  * CodeRelocate - relocate a given chunk of code
  */
-static void CodeRelocate( DWORD __far *reloc, WORD cnt )
+static void CodeRelocate( DWORD __far *reloc, WORD count )
 {
     WORD        i;
     DWORD       tmp;
 
-    for( i = 0; i <cnt; i++ ) {
+    for( i = 0; i < count; i++ ) {
         tmp = reloc[i] & 0x7fffffff;
         tmp += CodeLoadAddr;
         if( reloc[i] & 0x80000000 ) {
@@ -523,6 +567,9 @@ void Cleanup( void )
     FreeDPMIMemBlocks();
 
     if( DataSelector != 0 ) {
+        WINDPMI_FreeLDTDescriptor( DataSelector );
+        WINDPMI_FreeLDTDescriptor( StackSelector );
+        WINDPMI_FreeLDTDescriptor( CodeEntry.seg );
         _DPMI_Free32( DataHandle );
     }
 
@@ -539,27 +586,30 @@ void Cleanup( void )
 static bool doneFini = false;
 
 /*
- * Fini32BitTask - clean up after an error
+ * Fini32BitTask
+ *      error messages handling
+ *      32-bit clean up
  */
-int Fini32BitTask( int strcnt, ... )
+bool Fini32BitTask( int strcount, ... )
 {
 #ifdef DLL32
-    /* unused parameters */ (void)strcnt;
+    /* unused parameters */ (void)strcount;
 #else
     char        tmp[128];
     va_list     args;
-    char        _FAR *n;
+    char        *n;
 #endif
 
     if( doneFini ) {
-        return( 0 );
+        return( false );
     }
     doneFini = true;
-#ifndef DLL32
-    va_start( args, strcnt );
+#ifdef DLL32
+#else
+    va_start( args, strcount );
     tmp[0] = 0;
-    for( ; strcnt > 0; strcnt-- ) {
-        n = va_arg( args, char _FAR * );
+    for( ; strcount > 0; strcount-- ) {
+        n = va_arg( args, char * );
         strcat( tmp, n );
     }
     va_end( args );

@@ -38,11 +38,12 @@
 #include "roundmac.h"
 #include "heap.h"
 #include "heapacc.h"
-#if defined(__WINDOWS_286__) \
+#if defined(__WINDOWS__) \
   || defined(__NT__)
     #include <windows.h>
-#elif defined(__WINDOWS_386__)
+  #if defined(__WINDOWS_386__)
     #include "windpmi.h"
+  #endif
 #elif defined(__OS2__)
     #include <wos2.h>
 #elif defined(__RDOS__)
@@ -84,7 +85,7 @@ static int __ReturnMemToSystem( heapblk_nptr heap )
     if( !VirtualFree( (LPVOID)heap, 0, MEM_RELEASE ) )
         return -1;
   #elif defined(__WINDOWS_386__)
-    if( DPMIFree( (unsigned long)heap ) != 0 )
+    if( DPMIFree( (unsigned long)heap ) )
         return( -1 );
   #elif defined(__WINDOWS_286__)
     if( LocalFree( (HLOCAL)heap ) != NULL )
