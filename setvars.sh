@@ -34,7 +34,7 @@ export OWDOCBUILD=0
 # It doesn't requires appropriate DOSBOX emulator
 # and suppress documentation build
 
-# export OWNOWGML=1
+export OWNOWGML=1
 
 # Set OWGUINOBUILD variable to 1 to suppress tools GUI version build
 # If it is used then only tools character mode version is build
