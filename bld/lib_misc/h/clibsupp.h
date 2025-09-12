@@ -2,6 +2,7 @@
 *
 *                            Open Watcom Project
 *
+* Copyright (c) 2025      The Open Watcom Contributors. All Rights Reserved.
 *    Portions Copyright (c) 1983-2002 Sybase, Inc. All Rights Reserved.
 *
 *  ========================================================================
@@ -47,9 +48,22 @@ _WCRTLINK extern void   __set_ERANGE( void );
 _WCRTLINK extern FILE   *__get_std_stream( unsigned handle );
 
 /* used by C++ run-time library */
-_WCRTLINK extern int    __flush( FILE * );
-_WCRTLINK extern int    __plusplus_fstat( int handle, int *pios_mode );
-_WCRTLINK extern int    __plusplus_open( const char *name, int *pios_mode, int prot );
+_WCRTLINK extern int    __clib_flush( FILE * );
+_WCRTLINK extern int    __clib_fstat( int handle, int *pios_mode );
+_WCRTLINK extern int    __clib_open( const char *name, int *pios_mode, int prot );
+_WCRTLINK extern _WCNORETURN void __clib_fatal( char _WCI86FAR *, int );
+_WCRTLINK extern _WCNORETURN void __clib_exit( int );
+_WCRTLINK extern void   __clib_free( void *ptr );
+_WCRTLINK extern void   *__clib_malloc( size_t size );
+
+/* used by Frotran run-time library */
+_WCRTLINK extern int    __clib_set_binary( int );
+
+// Watcom Debugger interface
+// - this function should be called before __exit_with_msg()
+// - to allow Watcom Debugger to trap runtime errors.
+// - this really needs to be far!!!
+_WCRTLINK extern int    __EnterWVIDEO( char _WCFAR *string );
 
 #ifdef __cplusplus
 } /* extern "C" */

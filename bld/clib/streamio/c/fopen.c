@@ -51,6 +51,7 @@
 #include "rtdata.h"
 #include "rterrno.h"
 #include "fileacc.h"
+#include "commode.h"
 #include "openmode.h"
 #include "defwin.h"
 #include "streamio.h"
@@ -64,7 +65,7 @@
     #define PMODE   (S_IREAD | S_IWRITE)
 #endif
 
-unsigned __F_NAME(__open_flags,__wopen_flags)( const CHAR_TYPE *modestr, int *extflags )
+unsigned _WCNEAR __F_NAME(__open_flags,__wopen_flags)( const CHAR_TYPE *modestr, int *extflags )
 {
     unsigned            flags;
     bool                alive;
@@ -79,7 +80,7 @@ unsigned __F_NAME(__open_flags,__wopen_flags)( const CHAR_TYPE *modestr, int *ex
 #ifdef __NETWARE__
         *extflags = 0;
 #else
-        if( _commode == _COMMIT ) {
+        if( _RWD_commode == _COMMIT ) {
             *extflags = _COMMIT;
         } else {
             *extflags = 0;
@@ -189,7 +190,7 @@ unsigned __F_NAME(__open_flags,__wopen_flags)( const CHAR_TYPE *modestr, int *ex
 }
 
 
-static FILE *__F_NAME(__doopen,__wdoopen)( const CHAR_TYPE *name,
+static FILE * _WCNEAR __F_NAME(__doopen,__wdoopen)( const CHAR_TYPE *name,
                        CHAR_TYPE    mode,
                        unsigned     file_flags,
                        int          extflags,
@@ -300,7 +301,7 @@ _WCRTLINK FILE *__F_NAME(fopen,_wfopen)( const CHAR_TYPE *name, const CHAR_TYPE 
     return( __F_NAME(_fsopen,_wfsopen)( name, access_mode, OPENMODE_DENY_COMPAT ) );
 }
 
-static FILE *close_file( FILE *fp )
+static FILE * _WCNEAR close_file( FILE *fp )
 {
     __stream_link * link;
     __stream_link **owner;

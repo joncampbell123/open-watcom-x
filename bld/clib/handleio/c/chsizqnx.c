@@ -2,7 +2,7 @@
 *
 *                            Open Watcom Project
 *
-* Copyright (c) 2002-2022 The Open Watcom Contributors. All Rights Reserved.
+* Copyright (c) 2002-2025 The Open Watcom Contributors. All Rights Reserved.
 *    Portions Copyright (c) 1983-2002 Sybase, Inc. All Rights Reserved.
 *
 *  ========================================================================
@@ -40,6 +40,8 @@
 #include "iomode.h"
 #include "rtcheck.h"
 #include "rterrno.h"
+#include "lseek.h"
+
 
 _WCRTLINK int _chsize( int handle, long size )
 {
@@ -51,14 +53,14 @@ _WCRTLINK int _chsize( int handle, long size )
 
     __handle_check( handle, -1 );
 
-    current_offset = lseek( handle, 0L, SEEK_CUR ); /* remember current */
-    if( current_offset == -1 ) return( -1 );
-    diff = size - lseek( handle, 0L, SEEK_END );
+    current_offset = __lseek( handle, 0L, SEEK_CUR ); /* remember current */
+    if( current_offset == -1 )
+        return( -1 );
+    diff = size - __lseek( handle, 0L, SEEK_END );
     if( diff > 0 ) {
         /* pad file */
-        if( (flags = fcntl( handle, F_GETFL )) == -1 ) {
+        if( (flags = fcntl( handle, F_GETFL )) == -1 )
             return( -1 );
-        }
         if( flags & O_APPEND ) {
             memset( buff, 0, sizeof( buff ) );
             while( diff > sizeof( buff ) ) {
@@ -74,18 +76,23 @@ _WCRTLINK int _chsize( int handle, long size )
             }
             amount = diff;
         } else {
-            if( lseek( handle, (size-1), SEEK_SET ) != (size-1) ) {
+            size--;
+            if( __lseek( handle, size, SEEK_SET ) != size )
                 return( -1 );
-            }
             buff[0] = 0;
             amount = 1;
         }
-        if( write( handle, buff, amount ) != amount ) return( -1 );
+        if( write( handle, buff, amount ) != amount ) {
+            return( -1 );
+        }
     } else {
         /* truncate file */
-        if( ltrunc( handle, size, SEEK_SET ) != size ) return( -1 );
-        if( current_offset > size ) current_offset = size;
+        if( ltrunc( handle, size, SEEK_SET ) != size )
+            return( -1 );
+        if( current_offset > size ) {
+            current_offset = size;
+        }
     }
-    lseek( handle, current_offset, SEEK_SET );
+    __lseek( handle, current_offset, SEEK_SET );
     return( 0 );
 }

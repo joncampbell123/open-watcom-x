@@ -2,7 +2,7 @@
 *
 *                            Open Watcom Project
 *
-* Copyright (c) 2017-2022 The Open Watcom Contributors. All Rights Reserved.
+* Copyright (c) 2017-2025 The Open Watcom Contributors. All Rights Reserved.
 *    Portions Copyright (c) 1983-2002 Sybase, Inc. All Rights Reserved.
 *
 *  ========================================================================
@@ -53,7 +53,7 @@
 #include "rtexcpfl.h"
 
 
-#ifndef __SW_BM
+#ifndef __MT__
 __EXCEPTION_RECORD  *__XCPTHANDLER;
 #endif
 
@@ -216,7 +216,7 @@ static void __SigInit( void )
 /***************************/
 {
 
-#ifdef __SW_BM
+#ifdef __MT__
     int         i;
 
     for( i = 1; i <= __SIGLAST; ++i ) {
@@ -231,7 +231,7 @@ static void __SigInit( void )
 static void __SigFini( void )
 /***************************/
 {
-#ifdef __SW_BM
+#ifdef __MT__
     ULONG               nesting;
     APIRET              rc;
     __EXCEPTION_RECORD  *rr;
@@ -254,8 +254,8 @@ static void __sigabort( void )
 }
 
 
-static  void    restore_handler( void )
-/*************************************/
+static void _WCNEAR restore_handler( void )
+/*****************************************/
 {
 
     __SigFini();

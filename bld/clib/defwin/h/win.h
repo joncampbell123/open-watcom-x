@@ -64,7 +64,7 @@ extern  unsigned    __WinSetWindowPos(unsigned);
 #define GetPtrGlobalLock(data) GlobalLock( data )
 #endif
 
-#if defined( __SW_BM ) && defined( __NT__ )
+#if defined( __MT__ ) && defined( __NT__ )
 extern void _AccessWinLines( void );
 extern void _ReleaseWinLines( void );
 #else
@@ -94,10 +94,6 @@ extern void _ReleaseWinLines( void );
   #define FARmalloc malloc
   #define FARrealloc realloc
   #define FARfree free
-  #ifdef __NT__
-    #define AllocAlias16( a ) a
-    #define FreeAlias16( a )
-  #endif
 #endif
 
 #if defined( __OS2__ )
