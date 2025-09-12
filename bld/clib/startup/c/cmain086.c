@@ -2,6 +2,7 @@
 *
 *                            Open Watcom Project
 *
+* Copyright (c) 2025      The Open Watcom Contributors. All Rights Reserved.
 *    Portions Copyright (c) 1983-2002 Sybase, Inc. All Rights Reserved.
 *
 *  ========================================================================
@@ -44,14 +45,14 @@
 */
 
 #if defined(__SW_BD)
-int _CMain( void )
+int _WCNEAR _CMain( void )
 {
     return( __dll_initialize() );
 }
 #else
 extern int     main( int, char ** );
 
-void _CMain( void )
+_WCNORETURN void _WCNEAR _CMain( void )
 {
     exit( main( ___Argc, ___Argv ) );
     // never return
