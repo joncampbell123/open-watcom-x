@@ -2,7 +2,7 @@
 *
 *                            Open Watcom Project
 *
-* Copyright (c) 2002-2022 The Open Watcom Contributors. All Rights Reserved.
+* Copyright (c) 2002-2025 The Open Watcom Contributors. All Rights Reserved.
 *    Portions Copyright (c) 1983-2002 Sybase, Inc. All Rights Reserved.
 *
 *  ========================================================================
@@ -31,6 +31,7 @@
 
 
 #include "variety.h"
+#include "clibsupp.h"
 #if defined( __DOS__ )
     #include "doexitwm.h"
 #elif defined( __LINUX__ )
@@ -84,7 +85,7 @@ static struct RdosThreadState state;
 static char FatalErrorStr[256];
 #endif
 
-_WCRTLINK _WCNORETURN void __exit_with_msg( char _WCI86FAR *msg, int retcode )
+_WCNORETURN void _WCNEAR __exit_with_msg( char _WCI86FAR *msg, int retcode )
 {
 #if defined( __DOS__ )
     __do_exit_with_msg( msg, retcode );
@@ -189,7 +190,7 @@ _WCRTLINK _WCNORETURN void __exit_with_msg( char _WCI86FAR *msg, int retcode )
 #endif
 }
 
-_WCRTLINK _WCNORETURN void __fatal_runtime_error( char _WCI86FAR *msg, int retcode )
+_WCNORETURN void _WCNEAR __fatal_runtime_error( char _WCI86FAR *msg, int retcode )
 {
     if( __EnterWVIDEO( msg ) )
         EXIT( retcode );

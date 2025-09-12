@@ -223,7 +223,7 @@ static void SetHandlePos( int handle, long long pos )
     RdosLeaveKernelSection( &handle_section );
 }
 
-static void InitHandle( void )
+static void _WCNEAR InitHandle( void )
 {
     int i;
 
@@ -246,7 +246,7 @@ _WCRTLINK int unlink( const CHAR_TYPE *filename )
     return( -1 );
 }
 
-unsigned __GetIOMode( int handle )
+unsigned _WCNEAR __GetIOMode( int handle )
 {
     unsigned mode = 0;
 
@@ -264,7 +264,7 @@ unsigned __GetIOMode( int handle )
     return( mode );
 }
 
-void __SetIOMode( int handle, unsigned value )
+void _WCNEAR __SetIOMode( int handle, unsigned value )
 {
     RdosEnterKernelSection( &handle_section );
 
@@ -278,7 +278,7 @@ void __SetIOMode( int handle, unsigned value )
     RdosLeaveKernelSection( &handle_section );
 }
 
-int __SetIOMode_grow( int handle, unsigned value )
+int _WCNEAR __SetIOMode_grow( int handle, unsigned value )
 {
     int ret = -1;
 
@@ -607,7 +607,7 @@ _WCRTLINK off_t _tell( int handle )
     return( GetHandlePos( handle ) );
 }
 
-int __qread( int handle, void *buffer, unsigned len )
+int _WCNEAR __qread( int handle, void *buffer, unsigned len )
 {
     int         rdos_handle;
     long        pos;
@@ -625,7 +625,7 @@ int __qread( int handle, void *buffer, unsigned len )
     return( -1 );
 }
 
-int __qwrite( int handle, const void *buffer, unsigned len )
+int _WCNEAR __qwrite( int handle, const void *buffer, unsigned len )
 {
     int         rdos_handle;
     long        pos;
@@ -653,4 +653,4 @@ _WCRTLINK int write( int handle, const void *buffer, unsigned len )
     return( __qwrite( handle, buffer, len ) );
 }
 
-AXI(InitHandle,INIT_PRIORITY_LIBRARY);
+AXIN(InitHandle,INIT_PRIORITY_LIBRARY);
